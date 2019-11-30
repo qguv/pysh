@@ -143,7 +143,106 @@ class TestSyntax(unittest.TestCase):
 
             # bad string ident
             !hello world
-            "!hello" world()
+            "!hello" "world"
+        ''')
+
+    def test_call(self):
+        self.batched('''
+
+            # single call
+            x()
+            x()
+
+            # bad ident single call
+            32()
+            "32()"
+
+            # no single call without parens
+            x
+            "x"
+
+            # one string argument
+            x y
+            x("y")
+
+            # two string arguments
+            x y z
+            x("y", "z")
+
+            # delayed fn call
+            $x y z
+            x y("z")
+
+            # interrupted fn call
+            x $y z
+            x(y, "z")
+
+            # single num arg
+            x 0b_10
+            x(0b_10)
+
+            # mixed args
+            x y 0b_10
+            x("y", 0b_10)
+
+            # nested constructor brackets
+            #list [ 1 2 3 ]
+            #list([1, 2, 3])
+        ''')
+
+    def test_comprehension(self):
+        self.batched('''
+            # list comprehension, no variables
+            [ abc for abc in range 20 ]
+            [ "abc" for "abc" in range(20) ]
+
+            # list comprehension, iter variables
+            [ abc for $abc in range 20 ]
+            [ "abc" for abc in range(20) ]
+
+            # list comprehension, item variables
+            [ $abc for abc in range 20 ]
+            [ abc for "abc" in range(20) ]
+
+            # list comprehension, both variables
+            [ $abc for $abc in range 20 ]
+            [ abc for abc in range(20) ]
+
+            # set comprehension, no variables
+            { abc for abc in range 20 }
+            { "abc" for "abc" in range(20) }
+
+            # set comprehension, iter variables
+            { abc for $abc in range 20 }
+            { "abc" for abc in range(20) }
+
+            # set comprehension, item variables
+            { $abc for abc in range 20 }
+            { abc for "abc" in range(20) }
+
+            # set comprehension, both variables
+            { $abc for $abc in range 20 }
+            { abc for abc in range(20) }
+        ''')
+
+    def test_operators(self):
+        self.batched('''
+
+            # very prosey
+            20 is not None
+            20 is not None
+
+            # less prosey
+            a20 is not None
+            "a20" is not None
+
+            # even less prosey
+            a20 is not none
+            "a20" is not "none"
+
+            # pretty prosey
+            20 not in ( 30 , 40 , 50 )
+            20 not in ( 30 , 40 , 50 )
         ''')
 
 if __name__ == '__main__':

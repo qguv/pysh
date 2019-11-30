@@ -26,9 +26,12 @@ def dumps(line):
 
             # write out function call (TODO DRY)
             if fn:
-                tokens.append(fn + '(' + ', '.join(args) + ')')
+                if args:
+                    tokens.append(fn + '(' + ', '.join(args) + ')')
+                    args = []
+                else:
+                    tokens.append(wrap_str(fn))
                 fn = None
-                args = []
 
             tokens.append(word)
 
@@ -40,6 +43,19 @@ def dumps(line):
                 word += ' ' + line.pop(0)
             level.append(word)
 
+        # ident like ${var}
+        elif len(word) > 3 and word.startswith('${') and word[-1] == '}' and patterns.ident(word[2:-1]):
+            level.append(word[2:-1])
+
+        # ident like $var
+        elif len(word) > 1 and word[0] == '$' and patterns.ident(word[1:]):
+            level.append(word[1:])
+
+        # ident like var()
+        elif len(word) > 2 and word.endswith('()') and patterns.ident(word[:-2]):
+            level.append(word)
+
+        # ident for fn call
         elif not fn and patterns.ident(word):
             fn = word
 
@@ -48,8 +64,11 @@ def dumps(line):
 
     # write out function call (TODO DRY)
     if fn:
-        tokens.append(fn + '(' + ', '.join(args) + ')')
+        if args:
+            tokens.append(fn + '(' + ', '.join(args) + ')')
+            args = []
+        else:
+            tokens.append(wrap_str(fn))
         fn = None
-        args = []
 
     return ' '.join(tokens)

@@ -11,10 +11,10 @@ KEYWORDS = set('''
     await return yield raise
     + - * ** / % @ & | ^
     += -= *= **= /= %= @= &= |= ^=
-    == > <
+    == > < is
     != <= >=
     and or not
-    ( ) [ ]
+    ( ) [ ] { } : . ,
 '''.strip().split())
 
 def _fullmatch(regex):
