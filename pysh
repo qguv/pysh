@@ -5,6 +5,12 @@ import syntax
 import tty
 from chars import *
 
+STDIN_FD = 0
+LINE_WIDTH = 120
+MIN_LHS = 40
+SEPARATOR = " ---> "
+ELIDED = '...'
+
 def get_line(f, fn):
     line = ''
     while True:
@@ -30,8 +36,17 @@ def show_line(source):
         xpiled = "err: " + e.msg
 
     if xpiled:
-        rhs_indent = LINE_WIDTH - len(SEPARATOR) - len(xpiled)
-        print('\r', rhs_indent * ' ', SEPARATOR, xpiled, '\r', source, sep='', end='', flush=True)
+
+        # if too long, truncate source
+        if len(source) + len(SEPARATOR) + len(xpiled) > LINE_WIDTH:
+            source = ELIDED + source[len(ELIDED) - MIN_LHS:]
+
+            # if _still_ too long, truncate xpiled output
+            if len(source) + len(SEPARATOR) + len(xpiled) > LINE_WIDTH:
+                xpiled = ELIDED + xpiled[len(source) + len(SEPARATOR) + len(ELIDED) - LINE_WIDTH:]
+
+        rhs_padding = LINE_WIDTH - len(xpiled) - len(SEPARATOR)
+        print('\r', rhs_padding * ' ', SEPARATOR, xpiled, '\r', source, sep='', end='', flush=True)
     else:
         print(LINE_WIDTH * ' ', '\r', source, sep='', end='', flush=True)
     return xpiled
@@ -40,7 +55,8 @@ try:
     tty.setraw(STDIN_FD)
     while True:
         xpiled = get_line(stdin, show_line)
-        print('\n\r' + xpiled) # FIXME
+        # FIXME exec
+        print('\r')
 except (KeyboardInterrupt, EOFError):
     pass
 finally:
