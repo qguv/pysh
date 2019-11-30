@@ -1,0 +1,48 @@
+#!/usr/bin/env python3.8
+
+from sys import stdin, stdout
+import syntax
+import tty
+from chars import *
+
+def get_line(f, fn):
+    line = ''
+    while True:
+        ret = fn(line)
+        c = stdin.read(1)
+
+        if c == ENTER:
+            return ret
+        elif c == CTRL_C:
+            raise KeyboardInterrupt
+        elif c in (CTRL_D, CTRL_Z):
+            raise EOFError
+        elif c == BACKSPACE:
+            if line:
+                line = line[:-1]
+        else:
+            line += c
+
+def show_line(source):
+    try:
+        xpiled = syntax.dumps(source)
+    except SyntaxError as e:
+        xpiled = "err: " + e.msg
+
+    if xpiled:
+        rhs_indent = LINE_WIDTH - len(SEPARATOR) - len(xpiled)
+        print('\r', rhs_indent * ' ', SEPARATOR, xpiled, '\r', source, sep='', end='', flush=True)
+    else:
+        print(LINE_WIDTH * ' ', '\r', source, sep='', end='', flush=True)
+    return xpiled
+
+try:
+    tty.setraw(STDIN_FD)
+    while True:
+        xpiled = get_line(stdin, show_line)
+        print('\n\r' + xpiled) # FIXME
+except (KeyboardInterrupt, EOFError):
+    pass
+finally:
+    tty.setcbreak(STDIN_FD)
+    print(end='\r', flush=True)
