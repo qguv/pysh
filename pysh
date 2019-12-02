@@ -15,7 +15,11 @@ def get_line(f, fn):
     line = ''
     while True:
         ret = fn(line)
-        c = stdin.read(1)
+        try:
+            tty.setraw(STDIN_FD)
+            c = stdin.read(1)
+        finally:
+            tty.setcbreak(STDIN_FD)
 
         if c == ENTER:
             return ret
@@ -32,8 +36,8 @@ def get_line(f, fn):
 def show_line(source):
     try:
         xpiled = syntax.dumps(source)
-    except SyntaxError as e:
-        xpiled = "err: " + e.msg
+    except Exception as e:
+        xpiled = str(e).lower()
 
     if xpiled:
 
@@ -52,7 +56,6 @@ def show_line(source):
     return xpiled
 
 try:
-    tty.setraw(STDIN_FD)
     while True:
         xpiled = get_line(stdin, show_line)
         # FIXME exec
@@ -60,5 +63,4 @@ try:
 except (KeyboardInterrupt, EOFError):
     pass
 finally:
-    tty.setcbreak(STDIN_FD)
     print(end='\r', flush=True)

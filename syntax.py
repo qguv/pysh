@@ -1,3 +1,8 @@
+from tokenize import generate_tokens, untokenize
+from token import *
+from keyword import iskeyword
+from io import StringIO
+
 import patterns
 from chars import *
 
@@ -9,66 +14,79 @@ def wrap_str(w):
     return ret
 
 def dumps(line):
-    line = line.strip()
-    if not line:
-        return ''
+    source = list(generate_tokens(StringIO(line).readline))
+    xpiled = []
 
-    line = line.split()
-    tokens = []
-    fn = None
-    args = []
+    in_func = False
+    first_arg = False
+    for i, tok in enumerate(source):
+        next_tok = source[i+1] if len(source) > i + 1 else None
+        overnext_tok = source[i+2] if len(source) > i + 2 else None
 
-    while line:
-        word = line.pop(0)
-        level = (args if fn else tokens)
+        if tok.type == NAME:
+            # keyword: don't quote, and break out of current call
+            # TODO: True, False, None are valid arguments
+            if iskeyword(tok.string):
+                if in_func:
+                    xpiled.append((RPAR, ')'))
+                    in_func = first_arg = False
+                xpiled.append((tok.type, tok.string))
+                continue
 
-        if word in patterns.KEYWORDS:
+            # variable
+            if len(tok.string) > 1 and tok.string[0] == '$':
+                if in_func:
+                    if first_arg:
+                        first_arg = False
+                    else:
+                        xpiled.append((COMMA, ','))
+                xpiled.append((NAME, tok.string))
+                continue
 
-            # write out function call (TODO DRY)
-            if fn:
-                if args:
-                    tokens.append(fn + '(' + ', '.join(args) + ')')
-                    args = []
+            if not in_func:
+
+                # begin no-args func call
+                if next_tok and overnext_tok and next_tok.type == LPAR and overnext_tok.type == RPAR:
+                    xpiled.append((NAME, tok.string))
+                    continue
+
+                # begin func call with args
+                # TODO: True, False, None are valid arguments
+                if next_tok and next_tok.type in (NAME, NUMBER) and not iskeyword(next_tok.string):
+                    in_func = True
+                    xpiled.extend([
+                        (NAME, tok.string),
+                        (LPAR, '('),
+                    ])
+                    continue
+
+            # string
+            if in_func:
+                if first_arg:
+                    first_arg = False
                 else:
-                    tokens.append(wrap_str(fn))
-                fn = None
+                    xpiled.append((COMMA, ','))
+            xpiled.append((STRING, wrap_str(tok.string)))
+            continue
 
-            tokens.append(word)
+        # numeric function argument
+        if tok.type == NUMBER:
+            if in_func:
+                if first_arg:
+                    first_arg = False
+                else:
+                    xpiled.append((COMMA, ','))
+            xpiled.append((NUMBER, tok.string))
+            continue
 
-        elif patterns.number(word):
-            level.append(word)
+        if tok.type == LPAR:
+            xpiled.append((tok.type, tok.string))
+            continue
 
-        elif endquote := patterns.quoted(word):
-            while line and not word.endswith(endquote):
-                word += ' ' + line.pop(0)
-            level.append(word)
+        if in_func:
+            xpiled.append((RPAR, ')'))
+            in_func = first_arg = False
+        xpiled.append((tok.type, tok.string))
+        continue
 
-        # ident like ${var}
-        elif len(word) > 3 and word.startswith('${') and word[-1] == '}' and patterns.ident(word[2:-1]):
-            level.append(word[2:-1])
-
-        # ident like $var
-        elif len(word) > 1 and word[0] == '$' and patterns.ident(word[1:]):
-            level.append(word[1:])
-
-        # ident like var()
-        elif len(word) > 2 and word.endswith('()') and patterns.ident(word[:-2]):
-            level.append(word)
-
-        # ident for fn call
-        elif not fn and patterns.ident(word):
-            fn = word
-
-        else:
-            level.append(wrap_str(word))
-
-    # write out function call (TODO DRY)
-    if fn:
-        if args:
-            tokens.append(fn + '(' + ', '.join(args) + ')')
-            args = []
-        else:
-            tokens.append(wrap_str(fn))
-        fn = None
-
-    return ' '.join(tokens)
+    return untokenize(xpiled)
